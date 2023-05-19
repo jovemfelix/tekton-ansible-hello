@@ -1,0 +1,51 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: ansible-git-playbook
+spec:
+  params:
+    - description: The path to the Ansible playbook file.
+      name: playbook
+      type: string
+    - description: The path to the Ansible playbook file.
+      name: repo-url
+      type: string
+      default: 'https://github.com/jovemfelix/tekton-ansible-hello.git'
+  steps:
+    - image: alpine/git
+      name: download-playbook
+      resources: {}
+      script: >
+        git -c http.sslVerify=false clone
+        $(params.repo-url)
+        $(workspaces.task-ws.path)/
+      volumeMounts:
+        - mountPath: /workspace
+          name: workspace
+    - image: 'zshusers/zsh:4.3.15'
+      name: cat-readme
+      resources: {}
+      script: |
+        #!/usr/bin/env zsh
+        ls -lah $(workspaces.task-ws.path) && \
+        cat $(workspaces.task-ws.path)/README.md
+      volumeMounts:
+        - mountPath: /workspace
+          name: workspace
+    - args:
+        - '-i localhost, -c local'
+        - $(workspaces.task-ws.path)/playbook/$(params.playbook)
+      command:
+        - ansible-playbook
+      image: 'quay.io/ansible/ansible-runner:latest'
+      name: run-playbook
+      resources: {}
+      volumeMounts:
+        - mountPath: /workspace
+          name: workspace
+  volumes:
+    - emptyDir: {}
+      name: workspace
+  workspaces:
+    - description: Workspace for sharing files between tasks
+      name: task-ws

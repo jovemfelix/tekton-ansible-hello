@@ -1,0 +1,28 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: ansible-pipeline
+  namespace: claro-cicd-rj
+spec:
+  params:
+    - default: 'https://github.com/jovemfelix/tekton-ansible-hello.git'
+      name: repo-url
+      type: string
+    - default: hello.yml
+      name: playbook
+      type: string
+  tasks:
+    - name: ansible-git-playbook
+      params:
+        - name: playbook
+          value: $(params.playbook)
+        - name: repo-url
+          value: $(params.repo-url)
+      taskRef:
+        kind: Task
+        name: ansible-git-playbook
+      workspaces:
+        - name: task-ws
+          workspace: shared
+  workspaces:
+    - name: shared
